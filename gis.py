@@ -24,3 +24,21 @@ grid["score"] = 100 * (0.6*n(grid.poi_density) + 0.4*(1 - n(grid.competitor_dens
 
 grid.to_crs(4326).to_file("grid_scores.geojson", driver="GeoJSON")
 print(grid.sort_values("score", ascending=False).head())
+import time
+from scipy.spatial import cKDTree
+
+# old method: brute force
+t0 = time.time()
+old = [poi.intersects(b).sum() for b in c]
+t_old = time.time() - t0
+
+# new method: KD-tree
+cent = np.c_[grid.geometry.centroid.x, grid.geometry.centroid.y]
+poi_xy = np.c_[poi.geometry.centroid.x, poi.geometry.centroid.y]
+t0 = time.time()
+tree = cKDTree(poi_xy)
+new = [len(x) for x in tree.query_ball_point(cent, r=500)]
+t_new = time.time() - t0
+
+print(f"Brute force: {t_old:.2f}s | KD-tree: {t_new:.2f}s | speedup: {t_old/t_new:.1f}x")
+print("Max count difference:", max(abs(a-b) for a, b in zip(old, new)))
