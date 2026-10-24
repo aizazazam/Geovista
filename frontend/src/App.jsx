@@ -73,6 +73,15 @@ export default function App() {
             onChange={(e) => setMinScore(Number(e.target.value))}
           />
         </span>
+                <a
+          href={`${API}/report?n=10`}
+          style={{
+            float: "right", marginLeft: 20, padding: "3px 10px", fontSize: 13,
+            background: "#2ecc71", color: "#000", borderRadius: 4, textDecoration: "none",
+          }}
+        >
+          Download report (PDF)
+        </a>
         <span style={{ float: "right", fontSize: 13 }}>
           <span style={{ color: "#2ecc71" }}>■</span> high &nbsp;
           <span style={{ color: "#f1c40f" }}>■</span> medium &nbsp;
