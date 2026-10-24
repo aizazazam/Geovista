@@ -17,6 +17,7 @@ export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [minScore, setMinScore] = useState(0);
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     fetch(`${API}/cells`)
@@ -28,11 +29,16 @@ export default function App() {
       .catch((e) => setError(e.message));
   }, []);
 
+  const scores = useMemo(
+    () => (data ? data.features.map((f) => f.properties.score) : []),
+    [data]
+  );
+
   const cuts = useMemo(() => {
     if (!data) return null;
-    const s = data.features.map((f) => f.properties.score).sort((a, b) => a - b);
+    const s = [...scores].sort((a, b) => a - b);
     return [s[Math.floor(s.length * 0.33)], s[Math.floor(s.length * 0.66)]];
-  }, [data]);
+  }, [data, scores]);
 
   const style = (f) => {
     const v = f.properties.score;
@@ -46,7 +52,15 @@ export default function App() {
     layer.bindTooltip(
       `Score: ${p.score.toFixed(1)}<br>Competitors: ${p.competitor_density}<br>POIs: ${p.poi_density}`
     );
+    layer.on("click", () => {
+      const rank = scores.filter((s) => s > p.score).length + 1;
+      setSelected({ ...p, rank, total: scores.length });
+    });
   };
+
+  const band = selected
+    ? selected.score > cuts[1] ? "High" : selected.score > cuts[0] ? "Medium" : "Low"
+    : null;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -67,14 +81,40 @@ export default function App() {
       </div>
       {error && <div style={{ padding: 12, color: "crimson" }}>Could not load data: {error}. Is the backend running?</div>}
       {!data && !error && <div style={{ padding: 12 }}>Loading...</div>}
-      <MapContainer center={[24.93, 67.09]} zoom={14} style={{ flex: 1 }}>
-        <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-          attribution="Esri World Street Map"
-        />
-        {data && <FitBounds data={data} />}
-        {data && <GeoJSON key={minScore} data={data} style={style} onEachFeature={onEach} />}
-      </MapContainer>
+      <div style={{ flex: 1, position: "relative" }}>
+        <MapContainer center={[24.93, 67.09]} zoom={14} style={{ height: "100%" }}>
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+            attribution="Esri World Street Map"
+          />
+          {data && <FitBounds data={data} />}
+          {data && <GeoJSON key={minScore} data={data} style={style} onEachFeature={onEach} />}
+        </MapContainer>
+
+        {selected && (
+          <div style={{
+            position: "absolute", top: 12, right: 12, width: 250, zIndex: 1000,
+            background: "#fff", padding: 14, borderRadius: 6,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.3)", fontFamily: "sans-serif", fontSize: 14,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <b>Selected location</b>
+              <span style={{ cursor: "pointer" }} onClick={() => setSelected(null)}>✕</span>
+            </div>
+            <div style={{ fontSize: 30, fontWeight: "bold", margin: "8px 0 2px" }}>
+              {selected.score.toFixed(1)}<span style={{ fontSize: 14 }}> / 100</span>
+            </div>
+            <div style={{ marginBottom: 8 }}>{band} (relative to this area)</div>
+            <div>Rank: {selected.rank} of {selected.total}</div>
+            <div>Competitors within 500 m: {selected.competitor_density}</div>
+            <div>POIs within 500 m: {selected.poi_density}</div>
+            <div style={{ fontSize: 12, color: "#666", marginTop: 10 }}>
+              Score v0 = 60% POI density + 40% (1 − competitor density), normalised.
+              It is decision support, not a guarantee of success.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
