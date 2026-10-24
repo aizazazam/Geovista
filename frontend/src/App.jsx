@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const API = "http://127.0.0.1:8000";
 
+function FitBounds({ data }) {
+  const map = useMap();
+  useEffect(() => {
+    if (data) map.fitBounds(L.geoJSON(data).getBounds());
+  }, [data, map]);
+  return null;
+}
+
 export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [minScore, setMinScore] = useState(0);
 
   useEffect(() => {
     fetch(`${API}/cells`)
@@ -26,6 +36,7 @@ export default function App() {
 
   const style = (f) => {
     const v = f.properties.score;
+    if (v < minScore) return { fillOpacity: 0, opacity: 0 };
     const color = v > cuts[1] ? "#2ecc71" : v > cuts[0] ? "#f1c40f" : "#e74c3c";
     return { fillColor: color, color: "#888", weight: 0.3, fillOpacity: 0.55 };
   };
@@ -41,6 +52,13 @@ export default function App() {
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "10px 16px", background: "#222", color: "#fff", fontFamily: "sans-serif" }}>
         <b>Geovista</b> - business location suitability
+        <span style={{ marginLeft: 24, fontSize: 13 }}>
+          Min score: {minScore}{" "}
+          <input
+            type="range" min="0" max="60" step="5" value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+          />
+        </span>
         <span style={{ float: "right", fontSize: 13 }}>
           <span style={{ color: "#2ecc71" }}>■</span> high &nbsp;
           <span style={{ color: "#f1c40f" }}>■</span> medium &nbsp;
@@ -54,7 +72,8 @@ export default function App() {
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
           attribution="Esri World Street Map"
         />
-        {data && <GeoJSON data={data} style={style} onEachFeature={onEach} />}
+        {data && <FitBounds data={data} />}
+        {data && <GeoJSON key={minScore} data={data} style={style} onEachFeature={onEach} />}
       </MapContainer>
     </div>
   );
