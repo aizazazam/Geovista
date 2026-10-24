@@ -84,3 +84,64 @@ def report(n: int = 10):
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/pdf",
                              headers={"Content-Disposition": "attachment; filename=geovista_report.pdf"})
+
+
+V2_COLS = """geometry, poi_other, comp,
+             demand::float AS demand, saturation::float AS saturation,
+             score_v2::float AS score_v2"""
+
+
+@app.get("/v2/cells")
+def cells_v2():
+    gdf = read(f"SELECT {V2_COLS} FROM grid_scores_v2 WHERE is_candidate")
+    return json.loads(gdf.to_json())
+
+
+@app.get("/v2/top")
+def top_v2(n: int = 10):
+    gdf = read(f"SELECT {V2_COLS} FROM grid_scores_v2 WHERE is_candidate "
+               "ORDER BY score_v2 DESC LIMIT :n", {"n": n})
+    return json.loads(gdf.to_json())
+
+
+@app.get("/v2/report")
+def report_v2(n: int = 10):
+    sql = """SELECT score_v2::float AS score, comp, poi_other AS poi,
+                    saturation::float AS sat,
+                    ST_Y(ST_Centroid(geometry)) AS lat,
+                    ST_X(ST_Centroid(geometry)) AS lon
+             FROM grid_scores_v2 WHERE is_candidate
+             ORDER BY score_v2 DESC LIMIT :n"""
+    df = pd.read_sql(text(sql), engine, params={"n": n})
+
+    styles = getSampleStyleSheet()
+    rows = [["Rank", "Score v2", "Competitors", "POIs", "Saturation", "Lat", "Lon"]]
+    for i, r in enumerate(df.itertuples(), start=1):
+        rows.append([i, f"{r.score:.1f}", int(r.comp), int(r.poi),
+                     f"{r.sat:.3f}", f"{r.lat:.5f}", f"{r.lon:.5f}"])
+
+    table = Table(rows, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#222222")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+    ]))
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4)
+    doc.build([
+        Paragraph("Geovista - Top Locations Report (score v2)", styles["Title"]),
+        Paragraph(f"Top {n} candidate cells (250 m grid, Gulshan-e-Iqbal, Karachi). "
+                  "Only cells with at least 5 non-competitor POIs are scored.", styles["Normal"]),
+        Spacer(1, 12),
+        table,
+        Spacer(1, 12),
+        Paragraph("Score v2 = 50% demand + 50% (1 - saturation), normalised to 0-100. "
+                  "Demand is the log of non-competitor POIs within 500 m; saturation is "
+                  "competitors per non-competitor POI. It is decision support, not a "
+                  "guarantee of success.", styles["Italic"]),
+    ])
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/pdf",
+                             headers={"Content-Disposition": "attachment; filename=geovista_report_v2.pdf"})
