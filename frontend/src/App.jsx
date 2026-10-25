@@ -29,7 +29,9 @@ function normalise(version, geo) {
 function FitBounds({ data }) {
   const map = useMap();
   useEffect(() => {
-    if (data) map.fitBounds(L.geoJSON(data).getBounds());
+    if (!data) return;
+    map.invalidateSize();
+    map.fitBounds(L.geoJSON(data).getBounds(), { padding: [30, 30] });
   }, [data, map]);
   return null;
 }
