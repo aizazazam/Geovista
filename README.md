@@ -6,10 +6,12 @@ University Complex Engineering Problem (CEP), FAST-NUCES Karachi, course CS2021 
 
 ## Who built what
 
-| Person | Role |
+| Part | Owner |
 |---|---|
-| Abdullah | Backend (FastAPI), database (PostGIS), frontend (React), Docker |
-| Aizaz | GIS processing, scoring (v0, v2), sensitivity analysis, ML |
+| GIS pipeline: OpenStreetMap data, 250 m grid, density features, v0 scoring, sensitivity and Pareto analysis, v2 scoring | Abdullah |
+| Backend (FastAPI), PostGIS database, frontend (React + Leaflet), Docker, deployment, MLOps | Aizaz |
+
+Note: the roles were swapped after the proposal. Early commits (Docker, README, .gitignore) carry the "[Abdullah]" prefix by mistake. From now on commits use "[Aizaz]". The git history was not rewritten.
 
 Both of us share one laptop and one GitHub account (approved by the teacher). Commits are prefixed with the author name, e.g. `[Abdullah]`.
 
