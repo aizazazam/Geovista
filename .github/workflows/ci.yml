@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: geovista
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: geovista
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U geovista -d geovista"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_USER: geovista
+      DB_PASSWORD: ci_password
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: geovista
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+      - name: Load grid data into the test database
+        working-directory: backend
+        run: |
+          python db_load.py
+          python db_loadv2.py
+      - name: Run API tests
+        working-directory: backend
+        run: python -m pytest -v
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
