@@ -54,6 +54,12 @@ export default function App() {
   const [minScore, setMinScore] = useState(0);
   const [selected, setSelected] = useState(null);
   const [target, setTarget] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   useEffect(() => {
     setData(null);
@@ -122,8 +128,8 @@ export default function App() {
         <b>Geovista</b> - business location suitability
       </div>
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        <div style={{ width: 330, overflowY: "auto", background: "#f7f7f7", padding: 12, boxSizing: "border-box" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: 0 }}>
+        <div style={{ width: isMobile ? "100%" : 330, maxHeight: isMobile ? "45%" : "none", overflowY: "auto", background: "#f7f7f7", padding: 12, boxSizing: "border-box" }}>
           <div style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>Scoring version</div>
           <select
             value={version}
@@ -160,7 +166,12 @@ export default function App() {
           </div>
 
           {error && <div style={{ color: "crimson", fontSize: 13 }}>Could not load data: {error}. Is the backend running?</div>}
-          {!data && !error && <div style={{ fontSize: 13 }}>Loading...</div>}
+          {!data && !error && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              <div style={{ width: 16, height: 16, border: "3px solid #ccc", borderTopColor: "#27ae60", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              Loading map data...
+            </div>
+          )}
 
           {data && (
             <>
@@ -198,7 +209,7 @@ export default function App() {
           )}
         </div>
 
-        <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ flex: 1, position: "relative", minHeight: isMobile ? 280 : 0 }}>
           <MapContainer center={[24.93, 67.09]} zoom={14} style={{ height: "100%" }}>
             <TileLayer
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
@@ -213,9 +224,9 @@ export default function App() {
 
           {selected && (
             <div style={{
-              position: "absolute", top: 12, right: 12, width: 260, zIndex: 1000,
+              position: "absolute", top: 8, right: 8, width: isMobile ? 190 : 260, maxHeight: isMobile ? "60%" : "none", overflowY: "auto", zIndex: 1000,
               background: "#fff", padding: 14, borderRadius: 6,
-              boxShadow: "0 2px 10px rgba(0,0,0,0.3)", fontSize: 14,
+              boxShadow: "0 2px 10px rgba(0,0,0,0.3)", fontSize: isMobile ? 12 : 14,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <b>Selected location ({version})</b>
@@ -231,7 +242,7 @@ export default function App() {
               {version === "v2" && (
                 <div>Saturation (competitors per POI): {Number(selected.saturation).toFixed(3)}</div>
               )}
-              <div style={{ fontSize: 12, color: "#666", marginTop: 10 }}>
+              <div style={{ fontSize: 12, color: "#666", marginTop: 10, display: isMobile ? "none" : "block" }}>
                 {version === "v2"
                   ? "Score v2 = 50% demand (log of POIs) + 50% (1 - saturation), normalised. Only cells with at least 5 non-competitor POIs are scored."
                   : "Score v0 = 60% POI density + 40% (1 - competitor density), normalised."}{" "}
