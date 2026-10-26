@@ -529,7 +529,7 @@ export default function App() {
               </div>
               <dl className="gv-kv">
                 <dt>Rank</dt>
-                <dd>{selected.rank} of {selected.total}</dd>
+                <dd>{selected.rank} of {selected.total}</dd>{selected.feature && (() => { const c = L.geoJSON(selected.feature).getBounds().getCenter(); return (<><dt>Coordinates</dt><dd>{c.lat.toFixed(5)}, {c.lng.toFixed(5)}</dd><dt>Map</dt><dd><a href={`https://www.google.com/maps?q=${c.lat},${c.lng}`} target="_blank" rel="noreferrer">Open in Google Maps</a></dd></>); })()}
                 <dt>Competitors within 500 m</dt>
                 <dd>{selected._comp}</dd>
                 <dt>{version === "v2" ? "Non-competitor POIs" : "POIs"} within 500 m</dt>
