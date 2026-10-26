@@ -200,6 +200,20 @@ function normalise(version, geo) {
   return geo;
 }
 
+function reweight(version, geo, w) {
+  if (version !== "v2" || w === 50 || geo.features[0]?.properties?.demand === undefined) return geo;
+  const k = w / 100;
+  const mx = Math.max(...geo.features.map((f) => Number(f.properties.saturation)));
+  return {
+    ...geo,
+    features: geo.features.map((f) => {
+      const p = f.properties;
+      const s = 100 * (k * p.demand + (1 - k) * (1 - p.saturation / mx));
+      return { ...f, properties: { ...p, _score: s } };
+    }),
+  };
+}
+
 function FitBounds({ data }) {
   const map = useMap();
   useEffect(() => {
@@ -241,7 +255,7 @@ export default function App() {
   });
   const mapDark = base === "dark" || base === "sat";
   const scale = useMemo(() => makeScale(PALETTES[palette], mapDark), [palette, mapDark]);
-  const [data, setData] = useState(null);
+  const [rawData, setData] = useState(null); const [demandW, setDemandW] = useState(50); const data = useMemo(() => (rawData ? reweight(version, rawData, demandW) : null), [rawData, version, demandW]);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [minScore, setMinScore] = useState(0);
@@ -260,7 +274,7 @@ export default function App() {
     setError(null);
     setSelected(null);
     setTarget(null);
-    setMinScore(0);
+    setMinScore(0); setDemandW(50);
     fetch(`${API}${VERSIONS[version].cells}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -414,7 +428,7 @@ export default function App() {
           </section>
 
           <section className="gv-card">
-            <h2 className="gv-h">Hide cells scoring below <span style={{ color: "var(--accent)" }}>{minScore}</span></h2>
+            {version === "v2" && (<div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}><h2 className="gv-h">Demand weight <span style={{ color: "var(--accent)" }}>{demandW}%</span></h2><input className="gv-range" type="range" min="0" max="100" step="10" value={demandW} aria-label="Demand weight" onChange={(e) => { setDemandW(Number(e.target.value)); setSelected(null); }} /><div className="gv-muted">Saturation weight {100 - demandW}%. At 50% the scores match the PDF report.</div></div>)}<h2 className="gv-h">Hide cells scoring below <span style={{ color: "var(--accent)" }}>{minScore}</span></h2>
             <input
               className="gv-range"
               type="range" min="0" max={VERSIONS[version].max} step="5" value={minScore}
@@ -492,11 +506,11 @@ export default function App() {
             <Pane name="labels" style={{ zIndex: 450, pointerEvents: "none" }}>
               {b.labels && <TileLayer key={`lbl-${base}`} url={b.labels} maxNativeZoom={16} maxZoom={19} />}
             </Pane>
-            {data && <FitBounds data={data} />}
+            {rawData && <FitBounds data={rawData} />}
             <FlyTo target={target} />
             {data && (
               <GeoJSON
-                key={`${version}-${minScore}`}
+                key={`${version}-${minScore}-${demandW}`}
                 data={data}
                 style={style}
                 onEachFeature={onEach}
@@ -544,7 +558,7 @@ export default function App() {
               {!isMobile && (
                 <div className="gv-note">
                   {version === "v2"
-                    ? "Score v2 = 50% demand (log of POIs) + 50% (1 - saturation), normalised. Only cells with at least 5 non-competitor POIs are scored."
+                    ? `Score v2 = ${demandW}% demand (log of POIs) + ${100 - demandW}% (1 - saturation), normalised. Only cells with at least 5 non-competitor POIs are scored.`
                     : "Score v0 = 60% POI density + 40% (1 - competitor density), normalised."}{" "}
                   It is decision support, not a guarantee of success.
                 </div>
