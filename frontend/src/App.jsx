@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Pane, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -13,12 +13,14 @@ const VERSIONS = {
 const BASES = {
   light: {
     label: "Light",
+    labels: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     attr: "Esri, HERE, Garmin",
     native: 16,
   },
   dark: {
     label: "Dark",
+    labels: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     attr: "Esri, HERE, Garmin",
     native: 16,
@@ -29,8 +31,15 @@ const BASES = {
     attr: "Esri World Street Map",
     subdomains: "abc",
   },
+  osm: {
+    label: "Detailed",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attr: "&copy; OpenStreetMap contributors",
+    native: 19,
+  },
   sat: {
     label: "Satellite",
+    labels: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attr: "Esri World Imagery",
     subdomains: "abc",
@@ -480,6 +489,9 @@ export default function App() {
         <div style={{ flex: 1, position: "relative", minHeight: isMobile ? 280 : 0 }}>
           <MapContainer center={[24.93, 67.09]} zoom={14} style={{ height: "100%" }}>
             <TileLayer key={base} url={b.url} attribution={b.attr} maxNativeZoom={b.native || 19} maxZoom={19} />
+            <Pane name="labels" style={{ zIndex: 450, pointerEvents: "none" }}>
+              {b.labels && <TileLayer key={`lbl-${base}`} url={b.labels} maxNativeZoom={16} maxZoom={19} />}
+            </Pane>
             {data && <FitBounds data={data} />}
             <FlyTo target={target} />
             {data && (
