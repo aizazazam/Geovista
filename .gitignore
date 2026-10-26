@@ -7,3 +7,5 @@ node_modules/
 backend/.env
 backend/db.env
 backend/requirements-full.txt
+mlruns/
+mlflow.db
