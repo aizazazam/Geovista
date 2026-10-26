@@ -274,7 +274,7 @@ export default function App() {
     setError(null);
     setSelected(null);
     setTarget(null);
-    setMinScore(0); setDemandW(50);
+    setMinScore(0); setDemandW(50); setMaxComp(null);
     fetch(`${API}${VERSIONS[version].cells}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -318,14 +318,14 @@ export default function App() {
       .slice(0, 20);
   }, [data]);
 
-  const shown = useMemo(() => scores.filter((s) => s >= minScore).length, [scores, minScore]);
+  const [maxComp, setMaxComp] = useState(null); const compMax = useMemo(() => (rawData ? Math.max(...rawData.features.map((f) => Number(f.properties._comp) || 0)) : 0), [rawData]); const shown = useMemo(() => (data ? data.features.filter((f) => f.properties._score >= minScore && (version !== "v2" || f.properties._comp <= (maxComp ?? Infinity))).length : 0), [data, minScore, maxComp, version]);
 
   const bandOf = (v) => (v > cuts[1] ? "High" : v > cuts[0] ? "Medium" : "Low");
 
   const style = useCallback(
     (f) => {
       const v = f.properties._score;
-      if (v < minScore) return { fillOpacity: 0, opacity: 0 };
+      if (v < minScore || (version === "v2" && f.properties._comp > (maxComp ?? Infinity))) return { fillOpacity: 0, opacity: 0 };
       const p = pctOf(v);
       if (scale.discrete) {
         return { fillColor: scale.color(p), color: "#888", weight: 0.3, opacity: 1, fillOpacity: 0.55 };
@@ -338,7 +338,7 @@ export default function App() {
         fillOpacity: 0.25 + 0.65 * p,
       };
     },
-    [minScore, pctOf, scale, mapDark]
+    [minScore, maxComp, version, pctOf, scale, mapDark]
   );
 
   const onEach = (f, layer) => {
@@ -428,7 +428,7 @@ export default function App() {
           </section>
 
           <section className="gv-card">
-            {version === "v2" && (<div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}><h2 className="gv-h">Demand weight <span style={{ color: "var(--accent)" }}>{demandW}%</span></h2><input className="gv-range" type="range" min="0" max="100" step="10" value={demandW} aria-label="Demand weight" onChange={(e) => { setDemandW(Number(e.target.value)); setSelected(null); }} /><div className="gv-muted">Saturation weight {100 - demandW}%. At 50% the scores match the PDF report.</div></div>)}<h2 className="gv-h">Hide cells scoring below <span style={{ color: "var(--accent)" }}>{minScore}</span></h2>
+            {version === "v2" && (<div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}><h2 className="gv-h">Demand weight <span style={{ color: "var(--accent)" }}>{demandW}%</span></h2><input className="gv-range" type="range" min="0" max="100" step="10" value={demandW} aria-label="Demand weight" onChange={(e) => { setDemandW(Number(e.target.value)); setSelected(null); }} /><div className="gv-muted">Saturation weight {100 - demandW}%. At 50% the scores match the PDF report.</div></div>)}{version === "v2" && compMax > 0 && (<div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}><h2 className="gv-h">Max competitors within 500 m <span style={{ color: "var(--accent)" }}>{maxComp ?? compMax}</span></h2><input className="gv-range" type="range" min="0" max={compMax} step="1" value={maxComp ?? compMax} aria-label="Maximum competitors" onChange={(e) => { const v = Number(e.target.value); setMaxComp(v >= compMax ? null : v); setSelected(null); }} /><div className="gv-muted">Cells with more competitors are hidden from the map.</div></div>)}<h2 className="gv-h">Hide cells scoring below <span style={{ color: "var(--accent)" }}>{minScore}</span></h2>
             <input
               className="gv-range"
               type="range" min="0" max={VERSIONS[version].max} step="5" value={minScore}
@@ -510,7 +510,7 @@ export default function App() {
             <FlyTo target={target} />
             {data && (
               <GeoJSON
-                key={`${version}-${minScore}-${demandW}`}
+                key={`${version}-${minScore}-${demandW}-${maxComp}`}
                 data={data}
                 style={style}
                 onEachFeature={onEach}
