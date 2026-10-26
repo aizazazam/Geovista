@@ -1,3 +1,5 @@
+![CI](https://github.com/aizazazam/Geovista/actions/workflows/ci.yml/badge.svg)
+
 # Geovista
 
 Web app that scores business locations on a 250 m grid over Gulshan-e-Iqbal, Karachi (3528 cells), using OpenStreetMap data (828 competitors, 5713 POIs).
