@@ -87,10 +87,26 @@ npm run dev
 
 ## Web app features
 
-v0/v2 selector, colour bands (high/medium/low), minimum-score slider, hover tooltip, click-for-details panel, PDF report download.
+v0/v2 selector, ranked top-20 list (click a row to zoom to the cell), colour bands (high/medium/low) with five colour palettes, minimum-score filter, hover tooltip, click-for-details panel (score, rank, competitors, POIs, saturation, coordinates and a Google Maps link), five basemaps (Light, Dark, Street, Detailed, Satellite), light/dark theme, PDF report download.
+
+v2 only: a demand-weight slider (re-weights demand vs saturation live; at 50% the scores match the backend and the PDF report) and a maximum-competitors filter. The PDF report always uses the default 50/50 weights.
+
+## Experiment tracking (MLflow, local only)
+
+MLflow records the scoring experiments (v0 and v2 weight sweeps) so the runs can be compared. It tracks scoring runs only: there is no predictive model and there are no training labels. MLflow is not part of the Docker setup or the CI pipeline.
+
+```powershell
+pip install mlflow
+python mlflow_log.py
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+Run these from the repository root. Then open http://127.0.0.1:5000 and select the geovista-scoring experiment (22 runs: 14 for v0, 7 for v2, 1 v2 summary). The files mlflow.db and mlruns/ are git-ignored.
 
 ## Status
 
-Done: data pipeline, v0 and v2 scoring, sensitivity analysis, KD-tree benchmark, Pareto front, backend, frontend, Docker setup.
+Done: data pipeline, v0 and v2 scoring, sensitivity analysis, KD-tree benchmark, Pareto front, backend, frontend, Docker setup, API tests (pytest), GitHub Actions CI, local MLflow tracking of the scoring runs.
 
-In progress: validation with labels, ML model with MLflow, road accessibility.
+Not done: validation against real outcomes (no labels available), road accessibility, a predictive ML model, online deployment (the app runs locally and in Docker only), authentication, a map-based area picker (the app covers Gulshan-e-Iqbal only).
+
+Planned next: road accessibility and, if labels can be found, validation.
